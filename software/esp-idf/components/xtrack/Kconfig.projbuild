@@ -1,0 +1,38 @@
+menu "X-Track / LCKFB SZP ESP32-S3"
+config XTRACK_GPS_BAUD
+    int "GPS UART baud rate"
+    default 9600
+    range 1200 460800
+config XTRACK_GPS_RX
+    int "GPS RX GPIO (connect module TX)"
+    default 10
+    range 10 11
+config XTRACK_GPS_TX
+    int "GPS TX GPIO (connect module RX)"
+    default 11
+    range 10 11
+config XTRACK_GPS_MAX_AGE_MS
+    int "Maximum age of a usable position (ms)"
+    default 2500
+    range 1000 10000
+config XTRACK_MAX17048
+    bool "External MAX17048 battery gauge on I2C"
+    default n
+    help
+        Standard SZP board has no battery gauge/charger. Enable only with
+        an external battery/power system and MAX17048 at 0x36.
+config XTRACK_ENV_SENSORS
+    bool "External QMC5883L + BMP280 + SHT3x sensors on I2C"
+    default n
+    help
+        Probe each device separately. Unavailable measurements are not fabricated.
+config XTRACK_TOUCH_SWAP_XY
+    bool "Touch swap X/Y"
+    default y
+config XTRACK_TOUCH_MIRROR_X
+    bool "Touch mirror X"
+    default y
+config XTRACK_TOUCH_MIRROR_Y
+    bool "Touch mirror Y"
+    default n
+endmenu

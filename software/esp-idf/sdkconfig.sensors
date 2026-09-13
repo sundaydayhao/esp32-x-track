@@ -1,0 +1,3 @@
+# Append to sdkconfig.defaults for the optional sensor build.
+CONFIG_XTRACK_ENV_SENSORS=y
+CONFIG_XTRACK_MAX17048=y

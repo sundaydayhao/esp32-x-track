@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+set(IDF_TARGET esp32s3 CACHE STRING "X-Track target")
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+project(xtrack_szp VERSION 1.0.0)
+if(NOT IDF_VERSION_MAJOR EQUAL 5 OR NOT IDF_VERSION_MINOR EQUAL 5)
+    message(FATAL_ERROR "Use ESP-IDF 5.5.x for this project")
+endif()

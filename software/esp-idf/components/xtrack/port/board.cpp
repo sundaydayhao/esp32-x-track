@@ -54,7 +54,8 @@ void bus_init() {
     ESP_ERROR_CHECK(i2c_write(0x19,1,expander));
     ESP_ERROR_CHECK(i2c_write(0x19,2,0));
     ESP_ERROR_CHECK(i2c_write(0x19,3,0xf8));
-    expander_set(1,false); // LCD chip select; SPI3 belongs exclusively to the display.
+    // Keep the expander outputs in the documented idle state. LCD_CS is
+    // asserted again immediately after panel reset, before ST7789 init.
 }
 static bool flushed(esp_lcd_panel_io_handle_t,esp_lcd_panel_io_event_data_t*,void* ctx) {
     // LVGL explicitly permits flush_ready from the transfer-completion ISR.
@@ -97,7 +98,9 @@ void display_init() {
     esp_lcd_panel_dev_config_t cfg{};
     cfg.reset_gpio_num=-1;cfg.rgb_ele_order=LCD_RGB_ELEMENT_ORDER_RGB;cfg.bits_per_pixel=16;
     ESP_ERROR_CHECK(esp_lcd_new_panel_st7789(panel_io,&cfg,&panel));
-    ESP_ERROR_CHECK(esp_lcd_panel_reset(panel));ESP_ERROR_CHECK(esp_lcd_panel_init(panel));
+    ESP_ERROR_CHECK(esp_lcd_panel_reset(panel));
+    expander_set(1,false); // LCD_CS must be low before the ST7789 init commands.
+    ESP_ERROR_CHECK(esp_lcd_panel_init(panel));
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel,true));
     ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel,true));
     ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel,true,false));
@@ -123,6 +126,9 @@ void Backlight_Init() {
     ESP_ERROR_CHECK(ledc_timer_config(&timer));
     ledc_channel_config_t ch{};ch.gpio_num=xtrack::lcd_bl;ch.speed_mode=LEDC_LOW_SPEED_MODE;
     ch.channel=LEDC_CHANNEL_0;ch.timer_sel=LEDC_TIMER_0;ch.duty=0;
+    // The SZP board's LCD backlight is active-low (GPIO42).  Invert the
+    // LEDC output so a larger software brightness value means brighter LCD.
+    ch.flags.output_invert=true;
     ESP_ERROR_CHECK(ledc_channel_config(&ch));
 }
 uint16_t Backlight_GetValue(){return xtrack::brightness;}

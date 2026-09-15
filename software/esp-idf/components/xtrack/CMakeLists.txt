@@ -6,7 +6,7 @@ list(FILTER APP_SOURCES EXCLUDE REGEX "/Common/DataProc/DP_(Recorder|SportStatus
 file(GLOB PORT_SOURCES "port/*.cpp" "core/*.cpp")
 idf_component_register(SRCS ${APP_SOURCES} ${PORT_SOURCES}
     INCLUDE_DIRS "include" "core" "${APP_ROOT}" "${APP_ROOT}/Common/DataProc"
-    REQUIRES lvgl esp_codec_dev esp_driver_uart esp_driver_i2c esp_driver_spi
+    REQUIRES lvgl esp_codec_dev esp_lcd_touch_ft5x06 esp_driver_uart esp_driver_i2c esp_driver_spi
         esp_driver_i2s esp_driver_ledc esp_driver_gpio esp_driver_sdmmc esp_lcd
         esp_timer esp_pm esp_hw_support fatfs sdmmc nvs_flash json)
 target_compile_features(${COMPONENT_LIB} PUBLIC cxx_std_17)

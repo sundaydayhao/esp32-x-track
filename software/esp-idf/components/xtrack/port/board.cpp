@@ -5,8 +5,11 @@
 #include "driver/spi_master.h"
 #include "driver/ledc.h"
 #include "esp_lcd_panel_io.h"
+#include "esp_lcd_io_i2c.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
+#include "esp_lcd_touch.h"
+#include "esp_lcd_touch_ft5x06.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include <algorithm>
@@ -16,6 +19,7 @@ i2c_master_bus_handle_t i2c_bus=nullptr;
 static i2c_master_dev_handle_t devices[128]{};
 static uint8_t expander=0x05;
 static esp_lcd_panel_handle_t panel=nullptr;
+static esp_lcd_touch_handle_t touch_panel=nullptr;
 static lv_disp_drv_t display_driver;
 static uint16_t brightness=800;
 
@@ -66,21 +70,18 @@ static void flush(lv_disp_drv_t* drv,const lv_area_t* area,lv_color_t* pixels) {
     if(err!=ESP_OK){ESP_LOGE("lcd","draw: %s",esp_err_to_name(err));lv_disp_flush_ready(drv);}
 }
 static void touch_read(lv_indev_drv_t*,lv_indev_data_t* out) {
-    uint8_t raw[5]{};
     out->state=LV_INDEV_STATE_RELEASED;
-    if(i2c_read(0x38,0x02,raw,sizeof(raw))!=ESP_OK || !(raw[0]&0xf))return;
-    int x=((raw[1]&0xf)<<8)|raw[2],y=((raw[3]&0xf)<<8)|raw[4];
-#if CONFIG_XTRACK_TOUCH_SWAP_XY
-    std::swap(x,y);
-#endif
-#if CONFIG_XTRACK_TOUCH_MIRROR_X
-    x=width-1-x;
-#endif
-#if CONFIG_XTRACK_TOUCH_MIRROR_Y
-    y=height-1-y;
-#endif
-    if(x<0 || y<0 || x>=width || y>=height)return;
-    out->point.x=x;out->point.y=y;out->state=LV_INDEV_STATE_PRESSED;
+    if(!touch_panel)return;
+
+    if(esp_lcd_touch_read_data(touch_panel)!=ESP_OK)return;
+    esp_lcd_touch_point_data_t point{};
+    uint8_t points=0;
+    if(esp_lcd_touch_get_data(touch_panel,&point,&points,1)!=ESP_OK || points==0)return;
+    uint16_t x=point.x,y=point.y;
+    if(x>=width || y>=height)return;
+    out->point.x=static_cast<lv_coord_t>(x);
+    out->point.y=static_cast<lv_coord_t>(y);
+    out->state=LV_INDEV_STATE_PRESSED;
     HAL::Power_HandleTimeUpdate();
 }
 void display_init() {
@@ -104,6 +105,34 @@ void display_init() {
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel,true));
     ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel,true));
     ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel,true,false));
+
+    // The SZP board uses an FT6336 capacitive controller at I2C address 0x38.
+    // Use Espressif's FT5x06 driver so the register protocol and coordinate
+    // transforms match the controller used by the board reference design.
+    esp_lcd_panel_io_i2c_config_t touch_io_config=ESP_LCD_TOUCH_IO_I2C_FT5x06_CONFIG();
+    touch_io_config.scl_speed_hz=400000;
+    touch_io_config.transaction_timeout_ms=30;
+    esp_lcd_panel_io_handle_t touch_io=nullptr;
+    esp_err_t touch_err=esp_lcd_new_panel_io_i2c(i2c_bus,&touch_io_config,&touch_io);
+    if(touch_err==ESP_OK) {
+        esp_lcd_touch_config_t touch_config{};
+        touch_config.x_max=height;
+        touch_config.y_max=width;
+        touch_config.rst_gpio_num=GPIO_NUM_NC;
+        touch_config.int_gpio_num=GPIO_NUM_NC;
+        touch_config.levels.reset=0;
+        touch_config.levels.interrupt=0;
+        touch_config.flags.swap_xy=1;
+        touch_config.flags.mirror_x=1;
+        touch_config.flags.mirror_y=0;
+        touch_err=esp_lcd_touch_new_i2c_ft5x06(touch_io,&touch_config,&touch_panel);
+    }
+    if(touch_err!=ESP_OK) {
+        ESP_LOGE("touch","FT6336 init failed: %s",esp_err_to_name(touch_err));
+        touch_panel=nullptr;
+    } else {
+        ESP_LOGI("touch","FT6336 ready on I2C0 SDA=%d SCL=%d",sda,scl);
+    }
     static lv_disp_draw_buf_t draw;
     auto* a=static_cast<lv_color_t*>(heap_caps_malloc(width*40*sizeof(lv_color_t),MALLOC_CAP_DMA|MALLOC_CAP_INTERNAL));
     auto* b=static_cast<lv_color_t*>(heap_caps_malloc(width*40*sizeof(lv_color_t),MALLOC_CAP_DMA|MALLOC_CAP_INTERNAL));

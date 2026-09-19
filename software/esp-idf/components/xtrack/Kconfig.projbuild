@@ -15,6 +15,15 @@ config XTRACK_GPS_MAX_AGE_MS
     int "Maximum age of a usable position (ms)"
     default 2500
     range 1000 10000
+config XTRACK_GPS_CASIC_MODE
+    int "CASIC constellation mode (0=keep, 1=GPS, 2=BeiDou, 3=GPS+BeiDou)"
+    default 0
+    range 0 3
+    help
+        For compatible ATGM336H/CASIC receivers only. Send PCAS04 once per
+        ESP32 boot, after at least 3 seconds and the first valid NMEA sentence.
+        Connect ESP32 GPS TX to the receiver RX. Does not send a save-to-flash
+        command. 0 leaves the receiver unchanged; use 3 to restore dual mode.
 config XTRACK_MAX17048
     bool "External MAX17048 battery gauge on I2C"
     default n

@@ -70,7 +70,29 @@ idf.py menuconfig
 idf.py -p COM实际端口 flash monitor
 ```
 
-`COM实际端口` 必须替换成板子 CH340 的端口；Linux 使用对应串口设备。烧录会替换板载固件；本次没有自动烧录。默认采用 UART0 日志，GPS 独占 UART1。监视器每 10 秒报告 NMEA accepted/rejected、fix、卫星数和 HDOP。
+`COM实际端口` 必须替换成实际连接的开发板串口（CH340 或原生 USB Serial/JTAG）；Linux 使用对应串口设备。烧录会替换板载固件。默认采用 UART0 日志，并启用 USB Serial/JTAG 辅助输出；GPS 独占 UART1。监视器每 10 秒报告接收字节数、NMEA accepted/rejected、fix、卫星数和 HDOP；未定位时额外输出最近的 RMC、GGA、GSV 报文样本。
+
+遇到 `NO GPS FIX` 时先查看日志：
+
+- `RX` 与 `NMEA` 持续增长：模块正在发送固件能解析的报文，不等于已经定位。
+- RMC 状态 `V`、GGA 定位质量 `0`：模块自己报告未定位。检查天线连接，在室外无遮挡处持续通电搜星。
+- 接收字节不增长：检查供电、共地和模块 TX → GPIO10；有字节但 NMEA 不增长或 rejected 持续增长，再检查波特率、信号电平和协议。
+- RMC 为 `A`、GGA 质量非零仍不能定位：对照两条报文的 UTC、卫星数、HDOP 和新鲜度检查，保留原始样本再排查。
+
+`last` 报文是最近一次收到的样本，断线后可能保留旧值，需结合递增计数与报文 UTC 判断。汇总 HDOP 来自最后完整定位结果，尚无完整定位时默认 `99.0`，不代表原始 GGA 字段的值。2026-09-19 的 ATGM336H 接板实测见 [VALIDATION.md](VALIDATION.md)。
+
+ATGM336H/CASIC 接收机可在 `idf.py menuconfig` → `X-Track / LCKFB SZP ESP32-S3` 设置 `CASIC constellation mode`（`CONFIG_XTRACK_GPS_CASIC_MODE`），重新编译烧录后生效：
+
+| 值 | 模式 | 发送指令（末尾含 CR/LF） |
+|---|---|---|
+| 0（默认） | 保持模块原有配置，不发送命令 | 无 |
+| 1 | GPS 单模 | `$PCAS04,1*18` |
+| 2 | 北斗单模 | `$PCAS04,2*1B` |
+| 3 | GPS + 北斗双模 | `$PCAS04,3*1A` |
+
+协议依据为[中科微 CASIC 协议 §1.6.5](https://www.icofchina.com/d/file/xiazai/2017-05-02/ea0cdd3d81eeebcc657b5dbca80925ee.pdf)。只对兼容 CASIC 的模块启用，u-blox 等模块保持 0。必须连接 **GPIO11 → 模块 RX**；仅接模块 TX 可以读取定位，但无法切换模式。ESP32 启动至少 3 秒且收到可解析 NMEA 后发送一次，不发送保存配置命令；若模块单独重新上电，需要重启 ESP32 才会再次发送。
+
+日志 `CASIC mode ... requested` 只证明 UART 发送完成，须检查后续 RMC/GGA/GSV 是否改变来确认模块执行。切换时清除旧定位和报文样本，GPS 与北斗的 GSV 分别记录。切回双模应设置为 3；设置 0 只停止发送命令，不能主动恢复双模。切换单模成功也不等于定位成功，仍需 RMC/GGA 的有效状态、时效和定位质量满足要求。
 
 输出为 `build/xtrack_szp.bin`、`build/bootloader/bootloader.bin`、`build/partition_table/partition-table.bin`；优先用 `idf.py flash`，单独应用 bin 不能覆盖完整首次烧录流程。分区为 NVS、PHY、6 MiB factory app 与余下内部 FAT 配置区，没有 OTA 双分区。16 MB Flash + 8 MB octal PSRAM 参数已写入默认配置。内部 FAT 首次挂载失败会格式化该配置分区；SD 卡始终不会自动格式化。
 

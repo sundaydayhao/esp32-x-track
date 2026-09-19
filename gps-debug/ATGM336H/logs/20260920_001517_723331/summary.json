@@ -1,0 +1,104 @@
+{
+  "positioning_success": false,
+  "required_consecutive_fixes": 3,
+  "success_elapsed_s": null,
+  "paired_fixes": 0,
+  "max_consecutive_fixes": 0,
+  "first_fix": null,
+  "last_fix": null,
+  "max_satellites_used": 0,
+  "max_visible_by_talker": {
+    "BD": 0
+  },
+  "max_snr_reported": 0,
+  "sentence_counts": {
+    "BDGGA": 184,
+    "BDGLL": 184,
+    "BDGSA": 184,
+    "BDGSV": 184,
+    "BDRMC": 184,
+    "BDVTG": 184,
+    "BDZDA": 184,
+    "GPTXT": 184
+  },
+  "invalid_nmea_lines": 0,
+  "parse_errors": 0,
+  "latest": {
+    "GGA": {
+      "sentence": "BDGGA",
+      "kind": "GGA",
+      "utc": "",
+      "quality": 0,
+      "satellites": 0,
+      "hdop": 25.5,
+      "altitude_m": null,
+      "valid": false,
+      "received_elapsed_s": 183.141
+    },
+    "GLL": {
+      "sentence": "BDGLL",
+      "kind": "GLL",
+      "received_elapsed_s": 183.172
+    },
+    "GSA": {
+      "sentence": "BDGSA",
+      "kind": "GSA",
+      "fix_type": 1,
+      "pdop": 25.5,
+      "hdop": 25.5,
+      "vdop": 25.5,
+      "received_elapsed_s": 183.203
+    },
+    "GSV": {
+      "sentence": "BDGSV",
+      "kind": "GSV",
+      "visible": 0,
+      "message": 1,
+      "messages": 1,
+      "snr": [],
+      "received_elapsed_s": 183.234
+    },
+    "RMC": {
+      "sentence": "BDRMC",
+      "kind": "RMC",
+      "utc": "",
+      "status": "V",
+      "date": "",
+      "mode": "N",
+      "navigation_status": "V",
+      "valid": false,
+      "received_elapsed_s": 183.266
+    },
+    "VTG": {
+      "sentence": "BDVTG",
+      "kind": "VTG",
+      "received_elapsed_s": 183.281
+    },
+    "ZDA": {
+      "sentence": "BDZDA",
+      "kind": "ZDA",
+      "received_elapsed_s": 183.297
+    },
+    "TXT": {
+      "sentence": "GPTXT",
+      "kind": "TXT",
+      "text": "ANTENNA OK",
+      "received_elapsed_s": 183.328
+    }
+  },
+  "result": "IO_ERROR",
+  "started_at": "2026-09-20T00:15:17.723331+08:00",
+  "ended_at": "2026-09-20T00:18:21.682992+08:00",
+  "duration_s": 183.719,
+  "requested_duration_s": 300.0,
+  "port": "COM33",
+  "baudrate": 9600,
+  "environment": "indoors",
+  "serial_device": {
+    "description": "Prolific USB-to-Serial Comm Port (COM33)",
+    "hwid": "USB VID:PID=067B:2303 SER= LOCATION=1-1"
+  },
+  "bytes_received": 39008,
+  "error": "ClearCommError failed (PermissionError(13, '设备不识别此命令。', None, 22))",
+  "note": "Elapsed fix time is measured from monitoring start, not receiver power-on/TTFF."
+}

@@ -34,6 +34,11 @@ private:
         lv_timer_t* timer;
         TileConv::Point_t lastTileContOriPoint;
         bool isTrackAvtive;
+#ifdef XTRACK_IDF
+        uint32_t lastTileLoadTime;
+        bool missingMapTiles;
+        bool sdReady;
+#endif
     } priv;
 
     static uint16_t mapLevelCurrent;

@@ -59,6 +59,10 @@ public:
         strncpy(dirPath, path, sizeof(dirPath));
         dirPath[sizeof(dirPath) - 1] = '\0';
     }
+    static const char* GetDirPath()
+    {
+        return dirPath;
+    }
     static void SetExtName(const char* name)
     {
         strncpy(extName, name, sizeof(extName));

@@ -85,7 +85,7 @@ bool SD_Init() {
     esp_vfs_fat_mount_config_t mount{};mount.format_if_mount_failed=false;mount.max_files=16;mount.allocation_unit_size=16384;
     esp_err_t err=esp_vfs_fat_sdmmc_mount(xtrack::sd_mount,&host,&slot,&mount,&xtrack::card);
     xtrack::ready=err==ESP_OK;
-    if(xtrack::ready){mkdir("/sdcard/MAP",0775);mkdir("/sdcard/Track",0775);xtrack::recorder_recover();}
+    if(xtrack::ready){mkdir("/sdcard/MAP",0775);mkdir("/sdcard/Track",0775);xtrack::recorder_recover();ESP_LOGI("sd","Mounted FAT card: %.0f MiB",SD_GetCardSizeMB());}
     else ESP_LOGW("sd","Mount: %s (FAT32 card required; no auto-format)",esp_err_to_name(err));
     return xtrack::ready;
 }

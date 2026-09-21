@@ -1,5 +1,10 @@
 #include "LiveMap.h"
 #include "Config/Config.h"
+#ifdef XTRACK_IDF
+#include "HAL.h"
+#include "esp_log.h"
+#include <stdio.h>
+#endif
 
 using namespace Page;
 
@@ -228,6 +233,14 @@ void LiveMap::CheckPosition()
 
         onMapTileContRefresh(&area, mapX, mapY);
     }
+#ifdef XTRACK_IDF
+    else if (HAL::SD_GetReady() != priv.sdReady ||
+             (priv.missingMapTiles && lv_tick_elaps(priv.lastTileLoadTime) >= 5000))
+    {
+        // Retry absent tiles even when the receiver stays in the same tile.
+        MapTileContReload();
+    }
+#endif
 
     MapTileContUpdate(mapX, mapY, gpsInfo.course);
 
@@ -283,6 +296,10 @@ void LiveMap::MapTileContUpdate(int32_t mapX, int32_t mapY, float course)
 
 void LiveMap::MapTileContReload()
 {
+#ifdef XTRACK_IDF
+    uint32_t loaded = 0;
+    char firstMissing[64] = {};
+#endif
     /* tile src */
     for (uint32_t i = 0; i < View.ui.map.tileNum; i++)
     {
@@ -292,8 +309,37 @@ void LiveMap::MapTileContReload()
         char path[64];
         Model.mapConv.ConvertMapPath(pos.x, pos.y, path, sizeof(path));
 
-        View.SetMapTileSrc(i, path);
+        bool available = View.SetMapTileSrc(i, path);
+#ifdef XTRACK_IDF
+        if (available) ++loaded;
+        else if (!firstMissing[0]) snprintf(firstMissing, sizeof(firstMissing), "%s", path);
+#else
+        (void)available;
+#endif
     }
+#ifdef XTRACK_IDF
+    priv.lastTileLoadTime = lv_tick_get();
+    priv.sdReady = HAL::SD_GetReady();
+    priv.missingMapTiles = loaded != View.ui.map.tileNum;
+    if (priv.missingMapTiles)
+    {
+        lv_label_set_text(View.ui.labelInfo, !priv.sdReady ?
+            "TF CARD NOT READY\nInsert a FAT32 card" : (loaded == 0 ?
+            "NO OFFLINE MAP\nCopy map files to TF card" :
+            "INCOMPLETE MAP\nCheck area and zoom coverage"));
+        lv_obj_clear_flag(View.ui.labelInfo, LV_OBJ_FLAG_HIDDEN);
+        ESP_LOGW("map", "zoom=%d tiles=%lu/%lu SD=%d missing=%s", mapLevelCurrent,
+                 (unsigned long)loaded, (unsigned long)View.ui.map.tileNum, priv.sdReady, firstMissing);
+    }
+    else
+    {
+        lv_obj_add_flag(View.ui.labelInfo, LV_OBJ_FLAG_HIDDEN);
+        ESP_LOGI("map", "zoom=%d tiles=%lu/%lu loaded", mapLevelCurrent,
+                 (unsigned long)loaded, (unsigned long)View.ui.map.tileNum);
+    }
+    View.LoadMapAttribution(Model.mapConv.GetDirPath());
+    if (!loaded) lv_obj_add_flag(View.ui.labelAttribution, LV_OBJ_FLAG_HIDDEN);
+#endif
 }
 
 bool LiveMap::GetIsMapTileContChanged()

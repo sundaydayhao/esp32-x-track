@@ -79,8 +79,12 @@ static void gps_task(void*) {
         }
         if(now-report>=10000) {
             report=now;
-            ESP_LOGI("gps","RX=%llu bytes NMEA=%lu rejected=%lu fix=%d sats=%d hdop=%.1f",(unsigned long long)bytes,(unsigned long)ok,(unsigned long)bad,f.valid,f.satellites,f.hdop);
-            if(!f.valid) {
+            ESP_LOGI("gps","RX=%llu bytes NMEA=%lu rejected=%lu fix=%d sats=%d hdop=%.1f RMC=%.5s GGA=%.5s",
+                (unsigned long long)bytes,(unsigned long)ok,(unsigned long)bad,f.valid,f.satellites,f.hdop,last_rmc+1,last_gga+1);
+            if(f.valid) {
+                ESP_LOGI("gps","position lat=%.7f lon=%.7f altitude=%.1fm speed=%.2fkm/h UTC=%04d-%02d-%02dT%02d:%02d:%02dZ",
+                    f.latitude,f.longitude,f.altitude,f.speed_kmh,f.year,f.month,f.day,f.hour,f.minute,f.second);
+            } else {
                 if(*last_rmc)ESP_LOGI("gps","last RMC: %s",last_rmc);
                 if(*last_gga)ESP_LOGI("gps","last GGA: %s",last_gga);
                 if(*last_gp_gsv)ESP_LOGI("gps","last GPS GSV: %s",last_gp_gsv);

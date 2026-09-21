@@ -28,6 +28,26 @@ void LiveMapView::Create(lv_obj_t* root, uint32_t tileNum)
     Map_Create(root, tileNum);
     ZoomCtrl_Create(root);
     SportInfo_Create(root);
+#ifdef XTRACK_IDF
+    // Keep missing-map feedback above the tiles and clear of the position arrow.
+    lv_obj_move_foreground(ui.labelInfo);
+    lv_obj_set_width(ui.labelInfo, LV_PCT(94));
+    lv_obj_set_style_text_align(ui.labelInfo, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_bg_color(ui.labelInfo, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(ui.labelInfo, LV_OPA_90, 0);
+    lv_obj_align(ui.labelInfo, LV_ALIGN_TOP_MID, 0, 70);
+
+    label = lv_label_create(root);
+    lv_obj_set_style_text_font(label, ResourcePool::GetFont("bahnschrift_13"), 0);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_bg_color(label, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(label, LV_OPA_90, 0);
+    lv_obj_set_width(label, LV_PCT(94));
+    lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 27);
+    lv_label_set_text(label, "");
+    lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
+    ui.labelAttribution = label;
+#endif
 }
 
 void LiveMapView::Delete()
@@ -120,15 +140,52 @@ void LiveMapView::SetMapTile(uint32_t tileSize, uint32_t widthCnt)
     }
 }
 
-void LiveMapView::SetMapTileSrc(uint32_t index, const char* src)
+bool LiveMapView::SetMapTileSrc(uint32_t index, const char* src)
 {
     if (index >= ui.map.tileNum)
     {
-        return;
+        return false;
     }
 
+#ifdef XTRACK_IDF
+    lv_img_header_t header;
+    if (lv_img_decoder_get_info(src, &header) != LV_RES_OK || header.w != 256 || header.h != 256)
+    {
+        lv_obj_add_flag(ui.map.imgTiles[index], LV_OBJ_FLAG_HIDDEN);
+        return false;
+    }
+    lv_obj_clear_flag(ui.map.imgTiles[index], LV_OBJ_FLAG_HIDDEN);
+#endif
     TILE_IMG_SET_SRC(ui.map.imgTiles[index], src);
+    return true;
 }
+
+#ifdef XTRACK_IDF
+void LiveMapView::LoadMapAttribution(const char* directory)
+{
+    char path[64];
+    snprintf(path, sizeof(path), "%s/attribution.txt", directory);
+    char text[160] = {};
+    lv_fs_file_t file;
+    uint32_t bytes = 0;
+    if (lv_fs_open(&file, path, LV_FS_MODE_RD) == LV_FS_RES_OK)
+    {
+        if (lv_fs_read(&file, text, sizeof(text) - 1, &bytes) != LV_FS_RES_OK)
+        {
+            bytes = 0;
+        }
+        lv_fs_close(&file);
+    }
+    while (bytes && (text[bytes - 1] == '\n' || text[bytes - 1] == '\r'))
+    {
+        --bytes;
+    }
+    text[bytes] = '\0';
+    lv_label_set_text(ui.labelAttribution, text);
+    if (bytes) lv_obj_clear_flag(ui.labelAttribution, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.labelAttribution, LV_OBJ_FLAG_HIDDEN);
+}
+#endif
 
 void LiveMapView::SetArrowTheme(const char* theme)
 {

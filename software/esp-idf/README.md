@@ -31,7 +31,7 @@
 | 实战派多功能口信号 | GNSS 模块端 | 用途 |
 |---|---|---|
 | GPIO10 | TX/TXD | ESP32 UART1 接收 NMEA，必接 |
-| GPIO11 | RX/RXD | 预留 ESP32 发送，接入可用；当前固件不发送厂商配置命令 |
+| GPIO11 | RX/RXD | ESP32 发送；启用 CASIC 模式配置时用于发送星座切换命令 |
 | GND | GND | 共地，必接 |
 | 3V3 **或** 5V | 模块电源输入 | 只选一路，严格按成品模块供电规格 |
 
@@ -70,7 +70,7 @@ idf.py menuconfig
 idf.py -p COM实际端口 flash monitor
 ```
 
-`COM实际端口` 必须替换成实际连接的开发板串口（CH340 或原生 USB Serial/JTAG）；Linux 使用对应串口设备。烧录会替换板载固件。默认采用 UART0 日志，并启用 USB Serial/JTAG 辅助输出；GPS 独占 UART1。监视器每 10 秒报告接收字节数、NMEA accepted/rejected、fix、卫星数和 HDOP；未定位时额外输出最近的 RMC、GGA、GSV 报文样本。
+`COM实际端口` 必须替换成实际连接的开发板串口（CH340 或原生 USB Serial/JTAG）；Linux 使用对应串口设备。烧录会替换板载固件。默认采用 UART0 日志，并启用 USB Serial/JTAG 辅助输出；GPS 独占 UART1。监视器每 10 秒报告接收字节数、NMEA accepted/rejected、fix、卫星数和 HDOP；未定位时额外输出最近的 RMC、GGA、GSV 报文样本，有效定位时输出 WGS84 经纬度、海拔、速度和 UTC 时间。
 
 遇到 `NO GPS FIX` 时先查看日志：
 
@@ -120,6 +120,7 @@ SD 卡目录示例：
 ```text
 MAP/16/54870/26922.bin
 MAP/manifest.json
+MAP/attribution.txt            # 可选，两行地图署名与版权网址
 Track/                         # 固件自动创建，GPX 导出目录
 XTrackConfig.json               # 可选配置导入
 ```
@@ -140,6 +141,17 @@ XTrackConfig.json               # 可选配置导入
 WGS84/通常的 OSM XYZ 设 `true`；使用 GCJ-02 底图设 `false`。GPX 始终保存 WGS84，不随底图切换。PNG 也可直接使用：保留 XYZ PNG 并把扩展名设为 `png`，但运行时解码更占内存。默认地点仅用于无定位时预览，不能作为当前位置；界面会显示 `NO GPS FIX`。时区支持整数 -12..14，影响显示，不影响 GPX 的 `Z` 时间。
 
 内部配置自动保存且备份；导入文件保留在卡上时，每次挂卡都会重新应用其中的值。设置生效并正常保存后可移走该文件。地图坐标系与目录变更后退出再进入地图页；建议重启确认。不要在录制期间拔卡。
+
+IDF 地图页会区分 `TF CARD NOT READY`（卡未挂载）、`NO OFFLINE MAP`（当前区域/层级没有可用瓦片）与 `INCOMPLETE MAP`（部分瓦片缺失或格式不符）。缺图时每 5 秒重试，已有地图不受缺失瓦片影响；串口 `map` 日志输出加载数量和首个缺失路径。有效 GNSS 坐标只决定地图中心，不能替代底图文件。
+
+可在实际地图目录放置 UTF-8 `attribution.txt`，最多 159 字节，建议两行简短 ASCII 文字（当前界面字体不含中文），地图页会显示其内容。OSM 数据示例：
+
+```text
+(c) OpenStreetMap contributors
+openstreetmap.org/copyright
+```
+
+2026-09-21 本地实机测试包位于忽略目录 `test-output/offline-map-futian-20260921/`，其中 `sdcard` 内的内容直接复制到 FAT32 TF 卡根目录；包含 15～17 级 189 张瓦片，覆盖本次测试区域约 3.4 × 3.4 km。它是从一次缓存的 OSM 向量数据提取本地绘制的简化底图，包含道路、建筑和绿地，不提供导航算路。原始数据与版权说明在卡根目录的 `MAP-SOURCE`，不要把该非数字子目录放进 `MAP`。地图包与具体位置未纳入 Git；更换区域时需另行准备地图。
 
 **操作**
 
